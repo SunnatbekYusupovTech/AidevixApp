@@ -16,6 +16,7 @@ import Loader from '../../components/common/Loader';
 import FadeInView from '../../components/common/FadeInView';
 import AnimatedPressable from '../../components/common/AnimatedPressable';
 import { triggerHaptic } from '../../utils/haptics';
+import { API_URL } from '../../utils/constants';
 
 interface Props {
   route: { params: { courseId: string } };
@@ -35,6 +36,21 @@ const safeText = (v: any, fallback = ''): string => {
 const safeNumber = (v: any, fallback = 0): number => {
   const n = typeof v === 'number' ? v : Number(v);
   return Number.isFinite(n) ? n : fallback;
+};
+
+// Backend thumbnail nisbiy yo'l qaytarishi mumkin — to'liq URLga aylantirish
+const resolveImageUrl = (url: string | undefined | null): string | null => {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  try {
+    const baseUrl = API_URL.replace(/\/api\/?$/, '');
+    const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+    return `${baseUrl}${path}`;
+  } catch {
+    return null;
+  }
 };
 
 const CourseDetailScreen = ({ route, navigation }: Props) => {
@@ -165,12 +181,24 @@ const CourseDetailScreen = ({ route, navigation }: Props) => {
       <StatusBar barStyle="light-content" />
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.heroWrap}>
-          <Image
-            source={{ uri: course.thumbnail }}
-            style={styles.hero}
-            contentFit="cover"
-            transition={300}
-          />
+          {(() => {
+            const heroUrl = resolveImageUrl(course.thumbnail);
+            if (heroUrl) {
+              return (
+                <Image
+                  source={{ uri: heroUrl }}
+                  style={styles.hero}
+                  contentFit="cover"
+                  transition={300}
+                />
+              );
+            }
+            return (
+              <View style={[styles.hero, { backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }]}>
+                <Ionicons name="book" size={56} color={colors.primary} />
+              </View>
+            );
+          })()}
           <TouchableOpacity
             style={[styles.headerBtn, styles.headerBtnLeft]}
             onPress={handleBack}

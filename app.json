@@ -36,8 +36,8 @@
     ],
     "extra": {
       "googleAuth": {
-        "webClientId": "149350644359-e5vpjgb99qlacpiadolifnae76qh65d8.apps.googleusercontent.com",
-        "androidClientId": "149350644359-656al7pgio9f81j4374pvtndmnmq4adv.apps.googleusercontent.com",
+        "webClientId": "265335541741-a0hfrpnh9us5qmaii1hi8etdfdcchebu.apps.googleusercontent.com",
+        "androidClientId": "265335541741-sfd35v2pg932dl4l8j7nddbbilmjpvue.apps.googleusercontent.com",
         "iosClientId": "149350644359-ktgp3aj2qomavd6v5nfn1t7h152746fa.apps.googleusercontent.com"
       },
       "router": {},
@@ -45,6 +45,12 @@
         "projectId": "cc775564-4657-47bf-891c-5de62de12a30"
       }
     },
-    "owner": "abduvoris777"
+    "owner": "abduvoris777",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/cc775564-4657-47bf-891c-5de62de12a30"
+    }
   }
 }

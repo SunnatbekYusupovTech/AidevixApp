@@ -1,9 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
+import { Alert } from 'react-native';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import Constants from 'expo-constants';
-import {
-  GoogleSignin,
-  statusCodes,
-} from '@react-native-google-signin/google-signin';
 import { useAppDispatch } from '../store/hooks';
 import { googleLogin } from '../store/slices/authSlice';
 import { triggerHaptic } from '../utils/haptics';
@@ -15,73 +13,63 @@ const googleConfig = ((Constants.expoConfig?.extra as any)?.googleAuth ?? {}) as
   iosClientId?: string;
 };
 
-// Native Google Sign-In sozlamasi (brauzersiz — redirect_uri muammosi yo'q).
-//   webClientId  = serverClientId. Qaytgan id_token AUDIENCE shu bo'ladi → backend
-//                  GOOGLE_CLIENT_IDS ichida AYNAN shu Web client ID bo'lishi shart.
-//   iosClientId  = iOS native client (iOS build uchun).
-GoogleSignin.configure({
-  webClientId: googleConfig.webClientId,
-  iosClientId: googleConfig.iosClientId,
-  offlineAccess: false,
-});
-
 /**
- * Google bilan kirish hook'i (native @react-native-google-signin).
- * signIn() Google native oynasini ochadi, id_token oladi va backend /auth/google ga yuboradi.
+ * Google bilan kirish hook'i (@react-native-google-signin asosida).
+ *
+ * Native Android dialog orqali ishlaydi. Google Cloud Console'da
+ * Android OAuth client yaratilgan bo'lishi SHART va SHA-1 fingerprint
+ * EAS keystore bilan mos kelishi kerak.
+ *
+ * Flow:
+ *   1. GoogleSignin.signIn() → native Android account picker ochiladi
+ *   2. Foydalanuvchi akkauntini tanlaydi
+ *   3. id_token qaytadi
+ *   4. dispatch(googleLogin()) → backend /auth/google ga yuboriladi
  */
 export const useGoogleAuth = (referralCode?: string) => {
   const dispatch = useAppDispatch();
   const [submitting, setSubmitting] = useState(false);
 
-  // DIAGNOSTIKA: konfiguratsiya to'g'ri kelganini tekshirish.
+  // GoogleSignin ni bir marta konfiguratsiya qilish.
   useEffect(() => {
-    console.log('[GOOGLE-AUTH] webClientId =', googleConfig.webClientId);
-    if (!googleConfig.webClientId) {
-      console.warn('[GOOGLE-AUTH] webClientId yo\'q! app.json → extra.googleAuth.webClientId ni to\'ldiring.');
-    }
+    GoogleSignin.configure({
+      webClientId: googleConfig.webClientId,
+      iosClientId: googleConfig.iosClientId,
+      offlineAccess: false,
+    });
+    console.log('[GOOGLE-AUTH] Configured:', {
+      webClientId: googleConfig.webClientId,
+      androidClientId: googleConfig.androidClientId,
+    });
   }, []);
 
   const signIn = useCallback(async () => {
-    triggerHaptic('light');
-    setSubmitting(true);
     try {
-      // Play Services mavjudligini tekshiramiz (Android).
+      triggerHaptic('light');
+      setSubmitting(true);
+
+      // Google Play Services mavjudligini tekshiramiz.
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
 
-      const result = await GoogleSignin.signIn();
-
-      // Kutubxona versiyalari bo'yicha id_token ikki shaklda kelishi mumkin:
-      //   v13+: { type: 'success', data: { idToken, ... } }
-      //   eski: { idToken, ... }
-      const idToken =
-        (result as any)?.data?.idToken ?? (result as any)?.idToken ?? null;
-
-      // v13+ bekor qilishni type bilan bildiradi.
-      if ((result as any)?.type === 'cancelled') {
-        console.log('[GOOGLE-AUTH] foydalanuvchi bekor qildi');
-        return;
-      }
+      // Native Android account picker ochiladi.
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = userInfo.data?.idToken ?? (userInfo as any)?.idToken;
 
       if (!idToken) {
-        console.warn('[GOOGLE-AUTH] id_token topilmadi:', JSON.stringify(result).slice(0, 300));
         triggerHaptic('error');
+        console.warn('[GOOGLE-AUTH] id_token topilmadi');
+        Alert.alert(
+          'Google kirish',
+          'Google hisob maʼlumotlari olinmadi. Iltimos, qaytadan urinib ko\'ring.'
+        );
         return;
       }
 
-      console.log('[GOOGLE-AUTH] id_token olindi, backendga yuborilmoqda...');
+      // id_token ni backendga yuboramiz.
       await dispatch(googleLogin({ idToken, referralCode })).unwrap();
-      // Muvaffaqiyat → RootNavigator isLoggedIn bo'yicha avtomatik o'tadi.
     } catch (error: any) {
-      // Bekor qilish xato emas — faqat haqiqiy xatoda signal beramiz.
-      if (error?.code === statusCodes.SIGN_IN_CANCELLED) {
-        console.log('[GOOGLE-AUTH] bekor qilindi');
-      } else if (error?.code === statusCodes.IN_PROGRESS) {
-        console.log('[GOOGLE-AUTH] sign-in allaqachon davom etmoqda');
-      } else if (error?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        console.warn('[GOOGLE-AUTH] Google Play Services mavjud emas/eskirgan');
-        triggerHaptic('error');
-      } else {
-        console.warn('[GOOGLE-AUTH] xato:', error?.code, error?.message);
+      if (error?.code !== 'SIGN_IN_CANCELLED') {
+        console.warn('[GOOGLE-AUTH] Xato:', error?.message ?? error, error?.response?.data);
         triggerHaptic('error');
       }
     } finally {

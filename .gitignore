@@ -41,3 +41,6 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Windows reserved device names (accidental 'nul' file breaks git add)
+nul

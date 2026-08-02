@@ -80,7 +80,8 @@ export const googleLogin = createAsyncThunk(
   'auth/googleLogin',
   async ({ idToken, referralCode }: { idToken: string; referralCode?: string }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.post('/auth/google', { idToken, referralCode });
+      // Backend 'credential' maydonini kutmoqda (idToken emas)
+      const response = await axiosInstance.post('/auth/google', { credential: idToken, referralCode });
       const user = response.data?.data?.user ?? response.data?.user ?? null;
       const token = await storage.getToken();
       if (!user || !token) {

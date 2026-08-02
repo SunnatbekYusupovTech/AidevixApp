@@ -11,6 +11,7 @@ interface Props {
 }
 
 // "yoki" ajratgich + Google tugmasi. Login va Register ekranlarida qayta ishlatiladi.
+// Expo Go'da native modul mavjud emas — tugma disabled bo'ladi va matn o'zgaradi.
 const GoogleSignInButton = ({ referralCode, label = 'Google bilan davom etish' }: Props) => {
   const { colors } = useTheme();
   const { signIn, loading, disabled } = useGoogleAuth(referralCode);
@@ -24,12 +25,12 @@ const GoogleSignInButton = ({ referralCode, label = 'Google bilan davom etish' }
       </View>
 
       <Button
-        title={label}
+        title={disabled ? 'Google (faqat EAS build)' : label}
         variant="outline"
         onPress={signIn}
         loading={loading}
         disabled={disabled}
-        icon={<Ionicons name="logo-google" size={18} color={colors.primary} />}
+        icon={<Ionicons name="logo-google" size={18} color={disabled ? colors.textSecondary : colors.primary} />}
       />
     </View>
   );

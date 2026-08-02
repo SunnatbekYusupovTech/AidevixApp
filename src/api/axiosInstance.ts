@@ -2,15 +2,24 @@ import axios, { AxiosResponse } from 'axios';
 import { storage } from '../utils/storage';
 import { API_URL } from '../utils/constants';
 
+// Backend MOBILE_API_SECRET o'rnatilgan bo'lsa, bu header token leak'ni oldini oladi.
+// Agar backend'da secret o'rnatilmagan bo'lsa, bu header e'tiborga olinmaydi (legacy mode).
+const MOBILE_SECRET = process.env.EXPO_PUBLIC_MOBILE_API_SECRET || '';
+
 const axiosInstance = axios.create({
   baseURL: API_URL,
   timeout: 15000,
-  withCredentials: true,
+  // RN'da withCredentials amalda cookie yuborish/olishga yordam bermaydi.
+  // Token'lar AsyncStorage orqali boshqariladi.
+  withCredentials: false,
   headers: {
     'Content-Type': 'application/json',
     // Backend shu header'ni ko'rib login/refresh javoblariga accessToken+refreshToken'ni
     // JSON body'da qaytaradi (RN httpOnly cookie'ni o'qiy olmaydi). Web cookie-only qoladi.
     'X-Client-Type': 'mobile',
+    // SEC-D01: Agar backend MOBILE_API_SECRET o'rnatilgan bo'lsa, shu header
+    // orqali tekshiriladi. Token'lar faqat secret mos kelgandagina body'da qaytariladi.
+    ...(MOBILE_SECRET ? { 'X-Mobile-Secret': MOBILE_SECRET } : {}),
   },
 });
 

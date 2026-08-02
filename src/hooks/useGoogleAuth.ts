@@ -1,9 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
+import { Alert } from 'react-native';
 import Constants from 'expo-constants';
-import {
-  GoogleSignin,
-  statusCodes,
-} from '@react-native-google-signin/google-signin';
 import { useAppDispatch } from '../store/hooks';
 import { googleLogin } from '../store/slices/authSlice';
 import { triggerHaptic } from '../utils/haptics';
@@ -15,73 +12,76 @@ const googleConfig = ((Constants.expoConfig?.extra as any)?.googleAuth ?? {}) as
   iosClientId?: string;
 };
 
-// Native Google Sign-In sozlamasi (brauzersiz — redirect_uri muammosi yo'q).
-//   webClientId  = serverClientId. Qaytgan id_token AUDIENCE shu bo'ladi → backend
-//                  GOOGLE_CLIENT_IDS ichida AYNAN shu Web client ID bo'lishi shart.
-//   iosClientId  = iOS native client (iOS build uchun).
-GoogleSignin.configure({
-  webClientId: googleConfig.webClientId,
-  iosClientId: googleConfig.iosClientId,
-  offlineAccess: false,
-});
+// Expo Go'da native modullar mavjud emas — runtime'da aniqlaymiz.
+// Constants.executionEnvironment: 'storeClient' = Expo Go, 'standalone' / 'bare' = EAS build
+const isExpoGo = Constants.executionEnvironment === 'storeClient';
+
+// @react-native-google-signin native modul — Expo Go'da ishlamaydi.
+let GoogleSignin: any = null;
+let isGoogleAvailable = false;
+
+if (!isExpoGo) {
+  try {
+    const mod = require('@react-native-google-signin/google-signin');
+    GoogleSignin = mod.GoogleSignin;
+    isGoogleAvailable = true;
+  } catch {
+    console.warn('[GOOGLE-AUTH] @react-native-google-signin mavjud emas.');
+  }
+} else {
+  console.log('[GOOGLE-AUTH] Expo Go aniqlandi — Google Sign-In o\'chirilgan.');
+}
 
 /**
- * Google bilan kirish hook'i (native @react-native-google-signin).
- * signIn() Google native oynasini ochadi, id_token oladi va backend /auth/google ga yuboradi.
+ * Google bilan kirish hook'i.
+ *
+ * Expo Go'da native modul YO'Q — `disabled=true`.
+ * EAS Dev Client / production build'da to'liq ishlaydi.
  */
 export const useGoogleAuth = (referralCode?: string) => {
   const dispatch = useAppDispatch();
   const [submitting, setSubmitting] = useState(false);
 
-  // DIAGNOSTIKA: konfiguratsiya to'g'ri kelganini tekshirish.
   useEffect(() => {
-    console.log('[GOOGLE-AUTH] webClientId =', googleConfig.webClientId);
-    if (!googleConfig.webClientId) {
-      console.warn('[GOOGLE-AUTH] webClientId yo\'q! app.json → extra.googleAuth.webClientId ni to\'ldiring.');
+    if (!isGoogleAvailable || !GoogleSignin) return;
+    try {
+      GoogleSignin.configure({
+        webClientId: googleConfig.webClientId,
+        iosClientId: googleConfig.iosClientId,
+        offlineAccess: false,
+      });
+    } catch (err: any) {
+      console.warn('[GOOGLE-AUTH] Configure xato:', err?.message);
     }
   }, []);
 
   const signIn = useCallback(async () => {
-    triggerHaptic('light');
-    setSubmitting(true);
+    if (!isGoogleAvailable || !GoogleSignin) {
+      Alert.alert(
+        'Google kirish',
+        'Google orqali kirish Expo Go\'da ishlamaydi. Iltimos, email va parol orqali ro\'yxatdan o\'ting.\n\nGoogle kirish faqat production build\'da ishlaydi.',
+      );
+      return;
+    }
+
     try {
-      // Play Services mavjudligini tekshiramiz (Android).
+      triggerHaptic('light');
+      setSubmitting(true);
+
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-
-      const result = await GoogleSignin.signIn();
-
-      // Kutubxona versiyalari bo'yicha id_token ikki shaklda kelishi mumkin:
-      //   v13+: { type: 'success', data: { idToken, ... } }
-      //   eski: { idToken, ... }
-      const idToken =
-        (result as any)?.data?.idToken ?? (result as any)?.idToken ?? null;
-
-      // v13+ bekor qilishni type bilan bildiradi.
-      if ((result as any)?.type === 'cancelled') {
-        console.log('[GOOGLE-AUTH] foydalanuvchi bekor qildi');
-        return;
-      }
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = userInfo.data?.idToken ?? (userInfo as any)?.idToken;
 
       if (!idToken) {
-        console.warn('[GOOGLE-AUTH] id_token topilmadi:', JSON.stringify(result).slice(0, 300));
         triggerHaptic('error');
+        Alert.alert('Google kirish', 'Google hisob maʼlumotlari olinmadi. Qaytadan urinib ko\'ring.');
         return;
       }
 
-      console.log('[GOOGLE-AUTH] id_token olindi, backendga yuborilmoqda...');
       await dispatch(googleLogin({ idToken, referralCode })).unwrap();
-      // Muvaffaqiyat → RootNavigator isLoggedIn bo'yicha avtomatik o'tadi.
     } catch (error: any) {
-      // Bekor qilish xato emas — faqat haqiqiy xatoda signal beramiz.
-      if (error?.code === statusCodes.SIGN_IN_CANCELLED) {
-        console.log('[GOOGLE-AUTH] bekor qilindi');
-      } else if (error?.code === statusCodes.IN_PROGRESS) {
-        console.log('[GOOGLE-AUTH] sign-in allaqachon davom etmoqda');
-      } else if (error?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        console.warn('[GOOGLE-AUTH] Google Play Services mavjud emas/eskirgan');
-        triggerHaptic('error');
-      } else {
-        console.warn('[GOOGLE-AUTH] xato:', error?.code, error?.message);
+      if (error?.code !== 'SIGN_IN_CANCELLED') {
+        console.warn('[GOOGLE-AUTH] Xato:', error?.message ?? error);
         triggerHaptic('error');
       }
     } finally {
@@ -89,5 +89,5 @@ export const useGoogleAuth = (referralCode?: string) => {
     }
   }, [dispatch, referralCode]);
 
-  return { signIn, loading: submitting, disabled: false };
+  return { signIn, loading: submitting, disabled: !isGoogleAvailable };
 };

@@ -75,8 +75,14 @@ const LeaderboardScreen = () => {
   const rawList = period === 'weekly' ? weeklyUsers : users;
 
   const list = useMemo(
-    () => rawList.map((u, i) => normalize(u, i, period, currentUser?.id)),
-    [rawList, period, currentUser?.id]
+    () => rawList.map((u, i) => {
+      const norm = normalize(u, i, period, (currentUser as any)?._id || currentUser?.id);
+      if (norm.isCurrent && currentUser?.avatar) {
+        norm.avatar = currentUser.avatar;
+      }
+      return norm;
+    }),
+    [rawList, period, currentUser]
   );
 
   const loadData = useCallback(() => {
@@ -335,11 +341,18 @@ const LeaderboardScreen = () => {
             },
           ]}
         >
-          <View style={[styles.stickyAvatar, { backgroundColor: colors.primarySoft }]}>
-            <Text style={[styles.initial, { color: colors.primary }]}>
-              {(currentUser?.firstName?.[0] || currentUser?.username?.[0] || '?').toUpperCase()}
-            </Text>
-          </View>
+          {currentUser?.avatar ? (
+            <Image
+              source={{ uri: currentUser.avatar }}
+              style={[styles.avatar, { width: 36, height: 36, borderRadius: 18 }]}
+            />
+          ) : (
+            <View style={[styles.stickyAvatar, { backgroundColor: colors.primarySoft }]}>
+              <Text style={[styles.initial, { color: colors.primary }]}>
+                {(currentUser?.firstName?.[0] || currentUser?.username?.[0] || '?').toUpperCase()}
+              </Text>
+            </View>
+          )}
           <View style={styles.userMeta}>
             <Text style={{ color: colors.text, fontWeight: typography.weights.semibold }}>
               Sizning o'rningiz

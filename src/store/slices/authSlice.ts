@@ -30,8 +30,20 @@ const ERROR_TRANSLATIONS: Record<string, string> = {
 };
 
 const pickError = (error: any, fallback: string): string => {
-  const msg = error?.response?.data?.message;
-  if (typeof msg === 'string' && msg.length > 0) return ERROR_TRANSLATIONS[msg] ?? msg;
+  const data = error?.response?.data;
+  if (data) {
+    // 1. Array of validation errors (e.g., [{ msg: '...', param: '...' }])
+    if (Array.isArray(data.errors) && data.errors.length > 0) {
+      const parts = data.errors.map((e: any) => e.msg || e.message).filter(Boolean);
+      if (parts.length > 0) return parts.join(', ');
+    }
+    // 2. Direct message
+    const msg = data.message;
+    if (typeof msg === 'string' && msg.length > 0) return ERROR_TRANSLATIONS[msg] ?? msg;
+    // 3. Direct error field
+    const err = data.error;
+    if (typeof err === 'string' && err.length > 0) return ERROR_TRANSLATIONS[err] ?? err;
+  }
   if (error?.message === 'Network Error') return 'Internet aloqasini tekshiring';
   return fallback;
 };
@@ -47,11 +59,24 @@ export const login = createAsyncThunk(
     try {
       const response = await axiosInstance.post('/auth/login', { email, password: credentials.password });
       console.log('[LOGIN] ← OK', response.status, JSON.stringify(response.data).slice(0, 300));
-      const user = response.data?.data?.user ?? response.data?.user ?? null;
+      let user = response.data?.data?.user ?? response.data?.user ?? null;
       const token = await storage.getToken();
       if (!user || !token) {
         return rejectWithValue('Kirishda xatolik yuz berdi');
       }
+
+      // Mahalliy keshdagi avatarni tekshirish va biriktirish
+      try {
+        const localAvatar = await storage.getItem(`custom_avatar_${user.username}`);
+        if (localAvatar) {
+          console.log('[LOGIN] Merging locally stored avatar:', localAvatar);
+          user = { ...user, avatar: localAvatar };
+          await storage.setItem('custom_avatar', localAvatar);
+        }
+      } catch (err) {
+        console.log('[LOGIN] Error loading custom avatar from storage:', err);
+      }
+
       return { user, token };
     } catch (error: any) {
       const resp = error?.response;
@@ -81,11 +106,24 @@ export const googleLogin = createAsyncThunk(
   async ({ idToken, referralCode }: { idToken: string; referralCode?: string }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.post('/auth/google', { idToken, referralCode });
-      const user = response.data?.data?.user ?? response.data?.user ?? null;
+      let user = response.data?.data?.user ?? response.data?.user ?? null;
       const token = await storage.getToken();
       if (!user || !token) {
         return rejectWithValue('Google orqali kirishda xatolik yuz berdi');
       }
+
+      // Mahalliy keshdagi avatarni tekshirish va biriktirish
+      try {
+        const localAvatar = await storage.getItem(`custom_avatar_${user.username}`);
+        if (localAvatar) {
+          console.log('[GOOGLE-LOGIN] Merging locally stored avatar:', localAvatar);
+          user = { ...user, avatar: localAvatar };
+          await storage.setItem('custom_avatar', localAvatar);
+        }
+      } catch (err) {
+        console.log('[GOOGLE-LOGIN] Error loading custom avatar from storage:', err);
+      }
+
       return { user, token };
     } catch (error: any) {
       return rejectWithValue(pickError(error, 'Google orqali kirishda xatolik'));
@@ -229,11 +267,38 @@ export const updateProfile = createAsyncThunk(
   'auth/updateProfile',
   async (patch: Partial<{ firstName: string; lastName: string; avatar: string; bio: string }>, { rejectWithValue }) => {
     try {
+      console.log('[UPDATE-PROFILE] Sending patch:', patch);
       const response = await axiosInstance.put('/xp/profile', patch);
-      const updated = response.data?.data?.user ?? response.data?.user ?? null;
+      console.log('[UPDATE-PROFILE] Raw Response:', JSON.stringify(response.data));
+      const data = response.data?.data;
+      let updated = null;
+      
+      if (data?.user) {
+        // Backend user obyektini alohida, avatar va bio-ni esa uning tashqarisida (data ichida) qaytargan.
+        // Ularni yagona foydalanuvchi obyekti qilib birlashtiramiz (Redux interfeysiga moslash uchun).
+        updated = {
+          ...data.user,
+          id: data.user.id || data.user._id,
+          avatar: data.avatar || data.user.avatar || undefined,
+          bio: data.bio || undefined,
+        };
+      } else {
+        updated = data ?? response.data?.user ?? null;
+      }
+      
+      if (updated?.avatar && updated?.username) {
+        try {
+          await storage.setItem(`custom_avatar_${updated.username}`, updated.avatar);
+          await storage.setItem('custom_avatar', updated.avatar);
+          console.log('[UPDATE-PROFILE] Saved custom avatar locally for username:', updated.username);
+        } catch (err) {
+          console.log('[UPDATE-PROFILE] Error saving custom avatar locally:', err);
+        }
+      }
+      console.log('[UPDATE-PROFILE] Parsed user (with merged avatar):', updated);
       return { updated, patch };
     } catch (error: any) {
-      return rejectWithValue(error?.response?.data?.message || 'Profilni saqlashda xatolik');
+      return rejectWithValue(pickError(error, 'Profilni saqlashda xatolik'));
     }
   }
 );
@@ -244,12 +309,27 @@ export const checkAuth = createAsyncThunk(
     try {
       const token = await storage.getToken();
       if (!token) return null;
+      console.log('[CHECK-AUTH] Fetching /auth/me...');
       const response = await axiosInstance.get('/auth/me');
-      const user = response.data?.data?.user ?? response.data?.data ?? null;
+      console.log('[CHECK-AUTH] Raw Response:', JSON.stringify(response.data));
+      let user = response.data?.data?.user ?? response.data?.data ?? null;
+      console.log('[CHECK-AUTH] Parsed user:', user);
       if (!user) {
         await storage.clearTokens();
         return rejectWithValue('Sessiya muddati tugagan');
       }
+
+      // Mahalliy saqlangan avatarni yuklash va birlashtirish
+      try {
+        const localAvatar = (await storage.getItem(`custom_avatar_${user.username}`)) || (await storage.getItem('custom_avatar'));
+        if (localAvatar && user) {
+          console.log('[CHECK-AUTH] Merging locally stored avatar:', localAvatar);
+          user = { ...user, avatar: localAvatar };
+        }
+      } catch (err) {
+        console.log('[CHECK-AUTH] Error loading custom avatar from storage:', err);
+      }
+
       return { user, token };
     } catch (error: any) {
       await storage.clearTokens();
@@ -268,6 +348,7 @@ const authSlice = createSlice({
       state.isLoggedIn = false;
       state.error = null;
       storage.clearTokens();
+      storage.removeItem('custom_avatar');
     },
     clearAuthError: (state) => {
       state.error = null;

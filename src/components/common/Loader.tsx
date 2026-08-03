@@ -10,6 +10,7 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated';
 import { useTheme } from '../../theme';
+import AnimatedLogo from '../home/AnimatedLogo';
 
 interface LoaderProps {
   fullScreen?: boolean;
@@ -77,19 +78,35 @@ const PulseDot = ({
   );
 };
 
+
 const Loader = ({ fullScreen, size = 'large', color, style }: LoaderProps) => {
   const { colors } = useTheme();
   const dotColor = color || colors.primary;
   const dotSize = size === 'large' ? 14 : 8;
 
+  if (fullScreen) {
+    return (
+      <View
+        style={[
+          styles.fullScreen,
+          { backgroundColor: colors.background },
+          style,
+        ]}
+      >
+        {/* Premium brand logo animatsiyasi */}
+        <AnimatedLogo flat />
+        {/* Tagida kichik pulsing nuqtalar */}
+        <View style={[styles.dotsRow, { marginTop: 8 }]}>
+          <PulseDot color={dotColor} delay={0} dotSize={6} />
+          <PulseDot color={dotColor} delay={160} dotSize={6} />
+          <PulseDot color={dotColor} delay={320} dotSize={6} />
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <View
-      style={[
-        fullScreen ? styles.fullScreen : styles.container,
-        fullScreen && { backgroundColor: colors.background },
-        style,
-      ]}
-    >
+    <View style={[styles.container, style]}>
       <View style={styles.dotsRow}>
         <PulseDot color={dotColor} delay={0} dotSize={dotSize} />
         <PulseDot color={dotColor} delay={160} dotSize={dotSize} />

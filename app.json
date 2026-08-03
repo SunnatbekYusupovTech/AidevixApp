@@ -44,13 +44,6 @@
       "eas": {
         "projectId": "cc775564-4657-47bf-891c-5de62de12a30"
       }
-    },
-    "owner": "abduvoris777",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/cc775564-4657-47bf-891c-5de62de12a30"
     }
   }
 }

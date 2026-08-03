@@ -5,7 +5,7 @@ import { API_URL } from '../utils/constants';
 const axiosInstance = axios.create({
   baseURL: API_URL,
   timeout: 15000,
-  withCredentials: true,
+  withCredentials: false,
   headers: {
     'Content-Type': 'application/json',
     // Backend shu header'ni ko'rib login/refresh javoblariga accessToken+refreshToken'ni

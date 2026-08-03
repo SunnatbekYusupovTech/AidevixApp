@@ -32,7 +32,8 @@ const ThemeContext = createContext<ThemeContextType>({
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const colorScheme = useColorScheme();
-  const [themeMode, setThemeMode] = useState<ThemeMode>((colorScheme as ThemeMode) || 'dark');
+  // Default: 'dark' — foydalanuvchi keyin sozlamalardan o'zgartirishi mumkin
+  const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
   
   const isDark = themeMode === 'dark' || themeMode === 'amoled';
   

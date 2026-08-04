@@ -16,14 +16,16 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../theme';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { updateProfile } from '../../store/slices/authSlice';
 import FadeInView from '../../components/common/FadeInView';
 import { triggerHaptic } from '../../utils/haptics';
+import { uploadApi } from '../../api/uploadApi';
 
-// Native image picker yo'q — DiceBear orqali oldindan yaratilgan avatar to'plami.
-// Foydalanuvchi shulardan bittasini tanlashi yoki o'zining URL'ini yopishtirishi mumkin.
+// DiceBear orqali oldindan yaratilgan avatar to'plami.
+// Foydalanuvchi shulardan birini tanlashi, galereyadan rasm yuklashi, yoki URL kiritishi mumkin.
 const PRESET_AVATARS = [
   'https://api.dicebear.com/9.x/avataaars/png?seed=Aidevix1',
   'https://api.dicebear.com/9.x/avataaars/png?seed=Aidevix2',
@@ -47,6 +49,7 @@ const EditProfileScreen = () => {
   const [avatar, setAvatar] = useState(user?.avatar ?? '');
   const [customUrl, setCustomUrl] = useState('');
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const initial = (firstName?.[0] || lastName?.[0] || user?.email?.[0] || '?').toUpperCase();
 
@@ -58,6 +61,79 @@ const EditProfileScreen = () => {
   const pickPreset = (url: string) => {
     triggerHaptic('light');
     setAvatar(url);
+  };
+
+  // Qurilma galereyasidan rasm tanlash va backendga yuklash
+  const pickFromGallery = async () => {
+    try {
+      // Galereya ruxsatini so'rash
+      const permResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permResult.granted) {
+        Alert.alert(
+          'Ruxsat kerak',
+          'Galereyaga kirish uchun ruxsat bering'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const asset = result.assets[0];
+      triggerHaptic('medium');
+      setUploading(true);
+
+      // FormData yaratib backendga yuklash
+      const formData = new FormData();
+      const uri = asset.uri;
+      const filename = uri.split('/').pop() || 'avatar.jpg';
+      const match = /\.([\w]+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+      formData.append('avatar', {
+        uri,
+        name: filename,
+        type,
+      } as any);
+
+      try {
+        const response = await uploadApi.uploadAvatar(formData);
+        const avatarUrl =
+          response.data?.data?.url ??
+          response.data?.url ??
+          response.data?.data?.avatar ??
+          response.data?.avatar ??
+          null;
+
+        if (avatarUrl) {
+          triggerHaptic('success');
+          setAvatar(avatarUrl);
+        } else {
+          // Backend URL qaytarmasa — lokal URI ni ishlatamiz (optimistik)
+          triggerHaptic('success');
+          setAvatar(uri);
+        }
+      } catch (uploadError: any) {
+        console.log('[AVATAR UPLOAD] Error:', uploadError?.response?.data || uploadError?.message);
+        triggerHaptic('error');
+        Alert.alert(
+          'Yuklashda xatolik',
+          uploadError?.response?.data?.message || 'Rasmni yuklashda xatolik yuz berdi'
+        );
+      }
+    } catch (err) {
+      console.log('[IMAGE PICKER] Error:', err);
+      triggerHaptic('error');
+      Alert.alert('Xatolik', 'Rasmni tanlashda xatolik yuz berdi');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const applyCustomUrl = () => {
@@ -193,25 +269,70 @@ const EditProfileScreen = () => {
               </Text>
             )}
           </View>
-          {avatar ? (
+
+          {/* Galereyadan tanlash va rasmni olib tashlash tugmalari */}
+          <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.md }}>
             <TouchableOpacity
-              onPress={() => {
-                triggerHaptic('warning');
-                setAvatar('');
-              }}
-              style={{ marginTop: spacing.md }}
+              onPress={pickFromGallery}
+              disabled={uploading}
+              style={[
+                styles.galleryBtn,
+                {
+                  backgroundColor: colors.primary,
+                  borderRadius: radii.md,
+                  paddingVertical: spacing.sm,
+                  paddingHorizontal: spacing.md,
+                  opacity: uploading ? 0.6 : 1,
+                },
+              ]}
             >
-              <Text
-                style={{
-                  color: colors.error,
-                  fontSize: typography.sizes.sm,
-                  fontWeight: typography.weights.semibold,
-                }}
-              >
-                Rasmni olib tashlash
-              </Text>
+              {uploading ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <>
+                  <Ionicons name="image-outline" size={16} color="#ffffff" style={{ marginRight: 6 }} />
+                  <Text
+                    style={{
+                      color: '#ffffff',
+                      fontSize: typography.sizes.sm,
+                      fontWeight: typography.weights.semibold,
+                    }}
+                  >
+                    Galereyadan tanlash
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
-          ) : null}
+
+            {avatar ? (
+              <TouchableOpacity
+                onPress={() => {
+                  triggerHaptic('warning');
+                  setAvatar('');
+                }}
+                style={[
+                  styles.removeBtn,
+                  {
+                    borderColor: colors.error,
+                    borderRadius: radii.md,
+                    paddingVertical: spacing.sm,
+                    paddingHorizontal: spacing.md,
+                  },
+                ]}
+              >
+                <Ionicons name="trash-outline" size={16} color={colors.error} style={{ marginRight: 6 }} />
+                <Text
+                  style={{
+                    color: colors.error,
+                    fontSize: typography.sizes.sm,
+                    fontWeight: typography.weights.semibold,
+                  }}
+                >
+                  O'chirish
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </FadeInView>
 
         <Text
@@ -457,6 +578,18 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
     minHeight: 48,
+  },
+  galleryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    backgroundColor: 'transparent',
   },
 });
 

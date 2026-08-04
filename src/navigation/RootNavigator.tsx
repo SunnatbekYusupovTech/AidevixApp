@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { checkAuth } from '../store/slices/authSlice';
@@ -11,6 +11,7 @@ import Loader from '../components/common/Loader';
 import { useDailyCheckIn } from '../hooks/useDailyCheckIn';
 import { useReminders } from '../hooks/useReminders';
 import StreakCelebrationModal from '../components/gamification/StreakCelebrationModal';
+import { useTheme } from '../theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -23,6 +24,7 @@ const RootNavigator = () => {
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   const { celebration, closeCelebration } = useDailyCheckIn();
   useReminders();
+  const { colors, isDark } = useTheme();
 
   useEffect(() => {
     dispatch(checkAuth()).finally(() => setInitialCheckDone(true));
@@ -32,9 +34,21 @@ const RootNavigator = () => {
     return <Loader fullScreen />;
   }
 
+  const navTheme = {
+    ...(isDark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDark ? DarkTheme.colors : DefaultTheme.colors),
+      background: colors.background,
+      card: colors.card,
+      text: colors.text,
+      border: colors.border,
+      notification: colors.accent,
+    },
+  };
+
   return (
     <>
-      <NavigationContainer>
+      <NavigationContainer theme={navTheme}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {isLoggedIn ? (
             <>

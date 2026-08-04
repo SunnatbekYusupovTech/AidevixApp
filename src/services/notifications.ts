@@ -1,17 +1,35 @@
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { todayKey } from '../utils/checkInGuard';
 
-// Ilova ochiq turganda ham banner/ovoz ko'rsatish
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+// Push notificationlar Expo Go SDK 53+ da ishlamaydi va crash beradi. 
+// Shuning uchun Expo Go'da bo'lsak, mock qilamiz.
+let Notifications: any;
+if (Constants.appOwnership === 'expo') {
+  console.warn('[NOTIFICATIONS] Expo Go aniqlandi. Push bildirishnomalar mock qilindi.');
+  Notifications = {
+    setNotificationHandler: () => {},
+    AndroidImportance: { DEFAULT: 3, MAX: 4 },
+    setNotificationChannelAsync: async () => {},
+    getPermissionsAsync: async () => ({ status: 'granted' }),
+    requestPermissionsAsync: async () => ({ status: 'granted' }),
+    cancelScheduledNotificationAsync: async () => {},
+    scheduleNotificationAsync: async () => 'mock-id',
+    cancelAllScheduledNotificationsAsync: async () => {},
+    SchedulableTriggerInputTypes: { DATE: 'date' },
+  };
+} else {
+  Notifications = require('expo-notifications');
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 // --- Sozlamalar kalitlari (SettingsScreen bilan bir xil) ---
 export const STREAK_PREF = 'settings:streakReminder';

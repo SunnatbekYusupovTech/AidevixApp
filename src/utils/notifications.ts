@@ -1,15 +1,32 @@
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+let Notifications: any;
+if (Constants.appOwnership === 'expo') {
+  Notifications = {
+    setNotificationHandler: () => {},
+    AndroidImportance: { DEFAULT: 3, MAX: 4 },
+    setNotificationChannelAsync: async () => {},
+    getPermissionsAsync: async () => ({ status: 'granted' }),
+    requestPermissionsAsync: async () => ({ status: 'granted' }),
+    getExpoPushTokenAsync: async () => ({ data: 'mock-token' }),
+    cancelScheduledNotificationAsync: async () => {},
+    scheduleNotificationAsync: async () => 'mock-id',
+    cancelAllScheduledNotificationsAsync: async () => {},
+    SchedulableTriggerInputTypes: { DATE: 'date' },
+  };
+} else {
+  Notifications = require('expo-notifications');
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export const registerForPushNotificationsAsync = async () => {
   let token;

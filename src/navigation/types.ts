@@ -20,6 +20,10 @@ export type HomeStackParamList = {
   Shorts: undefined;
   Founders: undefined;
   RoadmapDetail: { roadmapId: string };
+  BattleLobby: undefined;
+  BattleMatching: { mode: '1v1' | '2v2' | '4v4' };
+  BattleArena: { mode: '1v1' | '2v2' | '4v4'; players: any[] };
+  BattleResult: { mode: '1v1' | '2v2' | '4v4'; status: 'victory' | 'defeat'; xpEarned: number };
 };
 
 export type CourseStackParamList = {

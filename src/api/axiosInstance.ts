@@ -9,8 +9,11 @@ const MOBILE_SECRET = process.env.EXPO_PUBLIC_MOBILE_API_SECRET || '';
 const axiosInstance = axios.create({
   baseURL: API_URL,
   timeout: 15000,
+<<<<<<< HEAD
   // RN'da withCredentials amalda cookie yuborish/olishga yordam bermaydi.
   // Token'lar AsyncStorage orqali boshqariladi.
+=======
+>>>>>>> 088a6db8a6f2c5e1bb79edb1a86b86e1a83f731d
   withCredentials: false,
   headers: {
     'Content-Type': 'application/json',

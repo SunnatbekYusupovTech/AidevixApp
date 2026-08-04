@@ -12,6 +12,7 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { login, clearAuthError } from '../../store/slices/authSlice';
@@ -69,11 +70,12 @@ const LoginScreen = () => {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <FadeInView delay={0} style={styles.header}>
-          <Image
-            source={require('../../../assets/images/icon.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <LinearGradient
+            colors={[colors.primary, colors.accent]}
+            style={styles.brandLogoContainer}
+          >
+            <Ionicons name="code-working" size={48} color="#ffffff" />
+          </LinearGradient>
           <Text style={[styles.title, { color: colors.text }]}>Xush kelibsiz!</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Aidevix — AI bilan dasturlashni o'rganing
@@ -167,10 +169,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
-  logo: {
-    width: 100,
-    height: 100,
+  brandLogoContainer: {
+    width: 90,
+    height: 90,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 20,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
   },
   title: {
     fontSize: 28,

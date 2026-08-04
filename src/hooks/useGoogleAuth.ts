@@ -5,6 +5,21 @@ import { useAppDispatch } from '../store/hooks';
 import { googleLogin } from '../store/slices/authSlice';
 import { triggerHaptic } from '../utils/haptics';
 
+// Google Sign-in native modulini Expo Go'da crash qilmasligi uchun dinamik yuklaymiz.
+let GoogleSignin: any;
+try {
+  GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
+} catch (error) {
+  console.warn('[GOOGLE-AUTH] Native Google Sign-in topilmadi (Expo Go ishlatilyapti). Mock rejim yoqildi.');
+  GoogleSignin = {
+    configure: () => {},
+    hasPlayServices: async () => false,
+    signIn: async () => {
+      throw new Error('Google Sign-in faqat haqiqiy APK buildda ishlaydi.');
+    },
+  };
+}
+
 // Client ID'lar app.json → extra.googleAuth dan keladi (Google Cloud Console'dan).
 const googleConfig = ((Constants.expoConfig?.extra as any)?.googleAuth ?? {}) as {
   webClientId?: string;

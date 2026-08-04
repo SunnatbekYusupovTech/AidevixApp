@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     ScrollView,
     Share,
     StyleSheet,
@@ -11,6 +12,7 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Clipboard from 'expo-clipboard';
 import { authApi } from '../../api/authApi';
 import { useAppSelector } from '../../store/hooks';
 import { useTheme } from '../../theme';
@@ -45,9 +47,11 @@ const ReferralsScreen = () => {
     const load = async () => {
       try {
         const response = await authApi.getReferrals();
+        console.log('[REFERRALS-SCREEN] Raw Stats Response:', JSON.stringify(response.data));
         const data = response.data?.data ?? response.data ?? null;
         setStats(data);
       } catch (e: any) {
+        console.log('[REFERRALS-SCREEN] Load Error:', e?.response?.data || e?.message);
         setError(e?.response?.data?.message || 'Ma\'lumotlarni yuklab bo\'lmadi');
       } finally {
         setLoading(false);
@@ -67,10 +71,14 @@ const ReferralsScreen = () => {
     });
   };
 
-  const handleCopyCode = () => {
+  const handleCopyCode = async () => {
+    if (!referralCode) {
+      Alert.alert('Xatolik', 'Taklif kodi yuklanmagan');
+      return;
+    }
     triggerHaptic('success');
-    // Clipboard API — expo-clipboard kerak bo'lsa qo'shiladi
-    // Clipboard.setStringAsync(referralCode);
+    await Clipboard.setStringAsync(referralCode);
+    Alert.alert('Nusxalandi', 'Taklif kodingiz nusxalandi! Endi uni do\'stlaringizga yuborishingiz mumkin.');
   };
 
   if (loading) {

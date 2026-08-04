@@ -24,6 +24,7 @@ export type HomeStackParamList = {
   BattleMatching: { mode: '1v1' | '2v2' | '4v4' };
   BattleArena: { mode: '1v1' | '2v2' | '4v4'; players: any[] };
   BattleResult: { mode: '1v1' | '2v2' | '4v4'; status: 'victory' | 'defeat'; xpEarned: number };
+  Forum: undefined;
 };
 
 export type CourseStackParamList = {

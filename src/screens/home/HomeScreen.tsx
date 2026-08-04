@@ -92,12 +92,12 @@ const HomeScreen = ({ navigation }: any) => {
 
       {/* ═══════════ QUICK ACTIONS ═══════════ */}
       <FadeInView delay={140}>
-        <View style={[styles.quickActions, { paddingHorizontal: spacing.xl }]}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: spacing.xl, gap: 20, marginBottom: 20, justifyContent: 'center' }}>
           <QuickAction name="code-slash" label="Editor" color={colors.primary} bg={isDark ? 'rgba(99,102,241,0.15)' : '#EEF0FF'} onPress={() => navigation.navigate('Playground')} />
           <QuickAction name="play-circle" label="Shorts" color={colors.secondary} bg={isDark ? 'rgba(6,182,212,0.15)' : '#E0F7FB'} onPress={() => navigation.navigate('Shorts')} />
+          <QuickAction name="chatbubbles" label="Forum" color={colors.accent} bg={isDark ? 'rgba(245,158,11,0.15)' : '#FEF3E2'} onPress={() => navigation.navigate('Forum')} />
           <QuickAction name="checkmark-done" label="Testlar" color={colors.success} bg={isDark ? 'rgba(34,211,153,0.15)' : '#E8FDF5'} onPress={() => setQuizVisible(true)} />
-          <QuickAction name="people" label="Asoschilar" color={colors.accent} bg={isDark ? 'rgba(245,158,11,0.15)' : '#FEF3E2'} onPress={() => navigation.navigate('Founders')} />
-        </View>
+        </ScrollView>
       </FadeInView>
 
       {/* Separator */}

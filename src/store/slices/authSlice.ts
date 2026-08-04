@@ -105,14 +105,9 @@ export const googleLogin = createAsyncThunk(
   'auth/googleLogin',
   async ({ idToken, referralCode }: { idToken: string; referralCode?: string }, { rejectWithValue }) => {
     try {
-<<<<<<< HEAD
       // Backend 'credential' maydonini kutmoqda (idToken emas)
       const response = await axiosInstance.post('/auth/google', { credential: idToken, referralCode });
-      const user = response.data?.data?.user ?? response.data?.user ?? null;
-=======
-      const response = await axiosInstance.post('/auth/google', { idToken, referralCode });
       let user = response.data?.data?.user ?? response.data?.user ?? null;
->>>>>>> 088a6db8a6f2c5e1bb79edb1a86b86e1a83f731d
       const token = await storage.getToken();
       if (!user || !token) {
         return rejectWithValue('Google orqali kirishda xatolik yuz berdi');

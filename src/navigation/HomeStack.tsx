@@ -9,6 +9,7 @@ import BattleLobbyScreen from '../screens/battle/BattleLobbyScreen';
 import BattleMatchingScreen from '../screens/battle/BattleMatchingScreen';
 import BattleArenaScreen from '../screens/battle/BattleArenaScreen';
 import BattleResultScreen from '../screens/battle/BattleResultScreen';
+import ForumScreen from '../screens/forum/ForumScreen';
 import { HomeStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -25,6 +26,7 @@ const HomeStack = () => {
       <Stack.Screen name="BattleMatching" component={BattleMatchingScreen} />
       <Stack.Screen name="BattleArena" component={BattleArenaScreen} />
       <Stack.Screen name="BattleResult" component={BattleResultScreen} />
+      <Stack.Screen name="Forum" component={ForumScreen} />
     </Stack.Navigator>
   );
 };
